@@ -49,9 +49,10 @@ void setup() {
   pinMode(PC13, OUTPUT);//STM32填PC13，Arduino(AVR等)填13就可以了（下同）
   thro.attach(PA3);thro.write(0);
   aile.attach(PA3);aile.write(45);
-  elev.attach(PA4);elev.write(45);
+  elev.attach(PB0);elev.write(45);
   rudd.attach(PA5);rudd.write(45);
   flap.attach(PA6);flap.write(0);
+  delay(1000); 
 }
 bool blinkState;
 String readline()
@@ -128,7 +129,7 @@ void loop() {
   rudd.write(yaw);
   blinkState = !blinkState;
   digitalWrite(PC13, blinkState);
-  delay(10);
+  //delay(10);
 }
 
 //向MPU6050写入一个字节的数据
