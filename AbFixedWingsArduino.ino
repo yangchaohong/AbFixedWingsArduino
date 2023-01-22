@@ -1,4 +1,4 @@
-// 本代码版权归Devymex所有，以GNU GENERAL PUBLIC LICENSE V3.0发布
+// 鸣谢：Devymex
 // http://www.gnu.org/licenses/gpl-3.0.en.html
 // 相关文档参见作者于知乎专栏发表的原创文章：
 // http://zhuanlan.zhihu.com/devymex/20082486
@@ -36,7 +36,7 @@ String s1,rem;
 Servo aile,elev,rudd,flap,thro;
 int writeServo(int s)
 {
-  return s/4;
+  return s/4+45;
 }
 
 void setup() {
@@ -60,7 +60,7 @@ String readline()
   char c=0;
   while(c!='\n')
   {
-    c=Serial1.read();
+    c=Serial.read();
     s+=c;
   }
   return s;
@@ -107,14 +107,17 @@ void loop() {
   Serial.print(realVals[3]);Serial.print("F");
   Serial.print(realVals[4]);Serial.print("F");
   Serial.print(realVals[5]);Serial.print("F");
-  Serial.print(fRoll);Serial.print("F");
+  Serial.print(fNewRoll);Serial.print("F");
   //Serial.print(fRollRate); //Serial.print("),\tPitch:");
-  Serial.print(fPitch); Serial.print("F\r\n");
+  Serial.print(fNewPitch); Serial.print("F\r\n");
   //Serial.print(fPitchRate);// Serial.print(")\n");
   //-----------------------华丽的分割线——仿Airbus Fly By Wire飞控部分-----------------------
-  String str=readline();
+  String str="";
+  if(Serial1.available()>0)
+    str=readline(),Serial.print("in:"),Serial.println(str);
+  
   if(str[0]=='P')
-    pitchNeed=str.substring(1,str.length()-1).toFloat();
+    pitchNeed=str.substring(1,str.length()-1).toFloat(),Serial.print("out:"),Serial.println(str.substring(1,str.length()-1));
   if(str[0]=='R')
     rollNeed=str.substring(1,str.length()-1).toFloat();
   float yaw;
