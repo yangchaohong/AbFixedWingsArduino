@@ -13,8 +13,15 @@
 #include <Servo.h>
 #include <Kalman.h>
 #include <Wire.h>
+#include <I2Cdev.h>
+#include <MPU6050.h>
 #include <Math.h>
 #include <String>
+
+MPU6050 accelgyro;
+
+int16_t ax, ay, az;
+int16_t gx, gy, gz;
 
 //using namespace Servo;
 float fRad2Deg = 57.295779513f; //将弧度转为角度的乘数
@@ -29,7 +36,7 @@ float fLastPitch = 0.0f; //上一次滤波得到的Pitch角
 Kalman kalmanRoll; //Roll角滤波器
 Kalman kalmanPitch; //Pitch角滤波器
 
-int pitchNeed,rollNeed;//机师所需的俯仰姿态
+int pitchNeed,rollNeed,throNeed;//机师所需的俯仰姿态
 bool first;
 float zitai[5];
 String s1,rem;
@@ -40,19 +47,26 @@ int writeServo(int s)
 }
 
 void setup() {
+  Wire.begin();
   Serial.begin(9600); //初始化串口，指定波特率
-  Wire.begin(); //初始化Wire库
-  WriteMPUReg(0x6B, 0); //启动MPU6050设备
-
-  Calibration(); //执行校准
-  nLastTime = micros(); //记录当前时间
-  pinMode(PC13, OUTPUT);//STM32填PC13，Arduino(AVR等)填13就可以了（下同）
-  thro.attach(PA3);thro.write(0);
+  Serial.println("Initializing I2C devices...");
+  accelgyro.initialize();
+  //accelgyro.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
+  //accelgyro.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+  //accelgyro.setClockSource(MPU6050_CLOCK_INTERNAL);
+  thro.attach(PB1);
   aile.attach(PA3);aile.write(45);
   elev.attach(PB0);elev.write(45);
   rudd.attach(PA5);rudd.write(45);
   flap.attach(PA6);flap.write(0);
   delay(1000); 
+  
+  // verify connection
+  Serial.println("Testing device connections...");
+  Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
+  Calibration(); //执行校准
+  nLastTime = micros(); //记录当前时间
+  pinMode(PC13, OUTPUT);//STM32填PC13，Arduino(AVR等)填13就可以了（下同）
 }
 bool blinkState;
 String readline()
@@ -67,9 +81,15 @@ String readline()
   return s;
 }
 void loop() {
-  int readouts[nValCnt];
-  ReadAccGyr(readouts); //读出测量值
-  
+  int readouts[nValCnt]={0};
+  //ReadAccGyr(readouts); //读出测量值
+  accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+  readouts[0]=ax;
+  readouts[1]=ay;
+  readouts[2]=az;
+  readouts[3]=gx;
+  readouts[4]=gy;
+  readouts[5]=gz;
   float realVals[7];
   Rectify(readouts, realVals); //根据校准的偏移量进行纠正
 
@@ -110,26 +130,28 @@ void loop() {
   Serial.print(realVals[5]);Serial.print("F");
   Serial.print(fNewRoll);Serial.print("F");
   //Serial.print(fRollRate); //Serial.print("),\tPitch:");
-  Serial.print(fNewPitch); Serial.print("F\r\n");
+  Serial.print(fNewPitch); Serial.print("F\n");
   //Serial.print(fPitchRate);// Serial.print(")\n");
   //-----------------------华丽的分割线——仿Airbus Fly By Wire飞控部分-----------------------
   String str="";
   if(Serial1.available()>0)
-    str=readline(),Serial.print("in:"),Serial.println(str);
+    str=readline()/*,Serial.print("in:"),Serial.println(str)*/;
   
   if(str[0]=='P')
-    pitchNeed=str.substring(1,str.length()-1).toFloat(),Serial.print("out:"),Serial.println(str.substring(1,str.length()-1));
+    pitchNeed=str.substring(1,str.length()-1).toFloat();
   if(str[0]=='R')
     rollNeed=str.substring(1,str.length()-1).toFloat();
   float yaw;
   if(str[0]=='Y')
     yaw=str.substring(1,str.length()-1).toFloat();
+  if(str[0]=='T')
+    throNeed=str.substring(1,str.length()-1).toInt();
   aile.write(writeServo(rollNeed-fNewRoll));
   elev.write(writeServo(pitchNeed-fNewPitch));
   rudd.write(yaw);
+  thro.write((float)throNeed/100*260+60);
   blinkState = !blinkState;
   digitalWrite(PC13, blinkState);
-  //delay(10);
 }
 
 //向MPU6050写入一个字节的数据
@@ -141,27 +163,7 @@ void WriteMPUReg(int nReg, unsigned char nVal) {
   Wire.endTransmission(true);
 }
 
-//从MPU6050读出一个字节的数据
-//指定寄存器地址，返回读出的值
-unsigned char ReadMPUReg(int nReg) {
-  Wire.beginTransmission(MPU);
-  Wire.write(nReg);
-  Wire.requestFrom(MPU, 1, true);
-  Wire.endTransmission(true);
-  return Wire.read();
-}
 
-//从MPU6050读出加速度计三个分量、温度和三个角速度计
-//保存在指定的数组中
-void ReadAccGyr(int *pVals) {
-  Wire.beginTransmission(MPU);
-  Wire.write(0x3B);
-  Wire.requestFrom(MPU, nValCnt * 2, true);
-  Wire.endTransmission(true);
-  for (long i = 0; i < nValCnt; ++i) {
-    pVals[i] = Wire.read() << 8 | Wire.read();
-  }
-}
 
 //对大量读数进行统计，校准平均偏移量
 void Calibration()
@@ -170,7 +172,13 @@ void Calibration()
   //先求和
   for (int i = 0; i < nCalibTimes; ++i) {
     int mpuVals[nValCnt];
-    ReadAccGyr(mpuVals);
+    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+    mpuVals[0]=ax;
+    mpuVals[1]=ay;
+    mpuVals[2]=az;
+    mpuVals[3]=gx;
+    mpuVals[4]=gy;
+    mpuVals[5]=gz;
     for (int j = 0; j < nValCnt; ++j) {
       valSums[j] += mpuVals[j];
     }
