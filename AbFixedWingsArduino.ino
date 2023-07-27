@@ -43,7 +43,7 @@ String s1,rem;
 Servo aile,elev,rudd,flap,thro;
 int writeServo(int s)
 {
-  return s/4+45;
+  return 90-s;
 }
 
 void setup() {
@@ -55,9 +55,9 @@ void setup() {
   //accelgyro.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
   //accelgyro.setClockSource(MPU6050_CLOCK_INTERNAL);
   thro.attach(PB1);
-  aile.attach(PA3);aile.write(45);
-  elev.attach(PB0);elev.write(45);
-  rudd.attach(PA5);rudd.write(45);
+  aile.attach(PA3);aile.write(90);
+  elev.attach(PA6);elev.write(90);
+  rudd.attach(PA5);rudd.write(90);
   flap.attach(PA6);flap.write(0);
   delay(1000); 
   
@@ -147,11 +147,12 @@ void loop() {
   if(str[0]=='T')
     throNeed=str.substring(1,str.length()-1).toInt();
   aile.write(writeServo(rollNeed-fNewRoll));
-  elev.write(writeServo(pitchNeed-fNewPitch));
+  elev.write(writeServo(fNewPitch-pitchNeed));
   rudd.write(yaw);
   thro.write((float)throNeed/100*260+60);
   blinkState = !blinkState;
   digitalWrite(PC13, blinkState);
+  delay(20);
 }
 
 //向MPU6050写入一个字节的数据
