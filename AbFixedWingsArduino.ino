@@ -36,11 +36,12 @@ float fLastPitch = 0.0f; //上一次滤波得到的Pitch角
 Kalman kalmanRoll; //Roll角滤波器
 Kalman kalmanPitch; //Pitch角滤波器
 
-int pitchNeed,rollNeed,throNeed;//机师所需的俯仰姿态
+int pitchNeed,rollNeed,throNeed,flap;//机师所需的俯仰姿态
 bool first;
 float zitai[5];
 String s1,rem;
-Servo aile,elev,rudd,flap,thro;
+Servo aileL,aileR,elev,rudd,thro;
+float yaw=0;
 int writeServo(int s)
 {
   return 90-s;
@@ -48,17 +49,19 @@ int writeServo(int s)
 
 void setup() {
   Wire.begin();
-  Serial.begin(9600); //初始化串口，指定波特率
+  Serial.begin(115200); //初始化串口，指定波特率
   Serial.println("Initializing I2C devices...");
   accelgyro.initialize();
   //accelgyro.setFullScaleAccelRange(MPU6050_ACCEL_FS_16);
   //accelgyro.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
   //accelgyro.setClockSource(MPU6050_CLOCK_INTERNAL);
   thro.attach(PB1);
-  aile.attach(PA3);aile.write(90);
+  aileL.attach(PA3);aileL.write(90);
+  aileR.attach(PA1);aileR.write(90);
+  rudd.attach(PB0);rudd.write(90);
   elev.attach(PA6);elev.write(90);
-  rudd.attach(PA5);rudd.write(90);
-  flap.attach(PA6);flap.write(0);
+  
+  //flap.attach(PA6);flap.write(0);
   delay(1000); 
   
   // verify connection
@@ -141,14 +144,16 @@ void loop() {
     pitchNeed=str.substring(1,str.length()-1).toFloat();
   if(str[0]=='R')
     rollNeed=str.substring(1,str.length()-1).toFloat();
-  float yaw;
   if(str[0]=='Y')
     yaw=str.substring(1,str.length()-1).toFloat();
   if(str[0]=='T')
     throNeed=str.substring(1,str.length()-1).toInt();
-  aile.write(writeServo(rollNeed-fNewRoll));
+  if(str[0]=='F')
+    flap=str.substring(1,str.length()-1).toInt();
+  aileL.write(writeServo(rollNeed-fNewRoll)+flap);
+  aileR.write(writeServo(rollNeed-fNewRoll)-flap);
   elev.write(writeServo(fNewPitch-pitchNeed));
-  rudd.write(yaw);
+  rudd.write(yaw+90);
   thro.write((float)throNeed/100*260+60);
   blinkState = !blinkState;
   digitalWrite(PC13, blinkState);
