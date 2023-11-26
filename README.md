@@ -13,7 +13,9 @@ How to compile-Using Arduino IDE 1.x.x on Windows
 
 4.Click Upload button to finish the compile.
 
-5.Connect MPU6050's VCC to 3V3
+5.Connect MPU6050's 
+
+                    VCC to 3V3
 
                     GND to GND
 
@@ -21,7 +23,9 @@ How to compile-Using Arduino IDE 1.x.x on Windows
 
                     SDA to PB7
 
-7.Connect ESC to PB1
+7.Connect 
+
+          ESC to PB1
 
           Left aileron to PA3
 
