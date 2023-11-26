@@ -3,7 +3,7 @@ AbFixedWings For Arduino
 
 How to compile-Using Arduino IDE 1.x.x on Windows
 
-1.Download https://github.com/rogerclarkmelbourne/Arduino_STM32 zip file and unzip to Your_Doc\Arduino\hardware
+1.Install Arduino SAM Boards(32-bit ARM Cortex-M3) in tools/boardmanager.Then download https://github.com/rogerclarkmelbourne/Arduino_STM32 zip file and unzip to Your_Doc\Arduino\hardware
 
 2.Add these libraries in Arduino IDE:
 
