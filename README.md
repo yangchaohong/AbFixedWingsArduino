@@ -1,5 +1,11 @@
 # AbFixedWingsArduino
-AbFixedWings For Arduino
+AbFixedWings For Arduino v0.5-Beta
+
+Very Very Very nice update:
+
+  Rewrite all the code to graft it into FreeRTOS
+
+  Fixed the the servo trembling problem by that
 
 How to compile-Using Arduino IDE 1.x.x on Windows
 
